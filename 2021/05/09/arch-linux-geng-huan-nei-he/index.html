@@ -16,9 +16,12 @@
 <meta property="og:description" content="我使用的manjaro发行版，想要自己做更改内核选项做些实验，需要手动编译内核，manjaro跟arch linux 是一个妈生的，所以可以参考arch linux上更换内核的wiki来进行操作。不得不说，arch 的wiki真的给力，aur也爽。 下载解压内核从linux kernel 的官网上下载你需要版本的内核（自己现在使用的内核版本可以使用uname -r查看，保险一点可以下载跟当前系统版">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2021-05-09T08:50:05.000Z">
-<meta property="article:modified_time" content="2021-05-09T14:01:01.739Z">
+<meta property="article:modified_time" content="2021-05-15T14:54:19.661Z">
 <meta property="article:author" content="Isatis.Yang">
-<meta property="article:tag" content="arch linux kernel">
+<meta property="article:tag" content="linux">
+<meta property="article:tag" content="manjaro">
+<meta property="article:tag" content="arch">
+<meta property="article:tag" content="kernel">
 <meta name="twitter:card" content="summary">
   
     <link rel="alternative" href="/atom.xml" title="Isatis&#39; Blog" type="application/atom+xml">
@@ -231,7 +234,19 @@ fallback_options="-S autodetect"<span aria-hidden="true" class="line-numbers-row
 		<ul class="article-tag-list">
 			 
         		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">arch linux kernel</a>
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">linux</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">manjaro</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">arch</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color2">kernel</a>
         		</li>
       		
 		</ul>
@@ -301,9 +316,18 @@ fallback_options="-S autodetect"<span aria-hidden="true" class="line-numbers-row
   
 <nav id="article-nav">
   
+    <a href="/2021/05/15/manjaro-pei-zhi-kdump/" id="article-nav-newer" class="article-nav-link-wrap">
+      <i class="icon-circle-left"></i>
+      <div class="article-nav-title">
+        
+          manjaro配置kdump
+        
+      </div>
+    </a>
   
-    <a href="/2021/01/02/nei-cun-bu-ju-fen-xi-1/" id="article-nav-older" class="article-nav-link-wrap">
-      <div class="article-nav-title">内存布局分析(1)</div>
+  
+    <a href="/2021/01/02/nei-cun-bu-ju-fen-xi-2/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">内存布局分析(2)</div>
       <i class="icon-circle-right"></i>
     </a>
   
@@ -421,22 +445,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
           <ul class="article-tag-list" q-show="showTags">
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">arch linux kernel</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">内存优化&分析</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">内存优化</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">内存管理</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">数据结构与算法</a>
               </li>
              
@@ -458,6 +466,38 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">节点对齐</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">manjaro</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">arch</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">crash</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">kdump</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color2">kernel</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">内存优化&分析</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">内存优化</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">内存管理</a>
               </li>
             
             <div class="clearfix"></div>
@@ -508,7 +548,7 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
     
     	<section class="tools-section tools-section-me" q-show="aboutme">
   	  	
-  	  		<div class="aboutme-wrap" id="js-aboutme">&lt;br&gt; 努力学习 &lt;br&gt; 好好生活 &lt;br&gt;</div>
+  	  		<div class="aboutme-wrap" id="js-aboutme">&lt;br&gt; 努力学习 &lt;br&gt; 好好生活 &lt;br&gt; Email：704739397@qq.com &lt;br&gt;</div>
   	  	
     	</section>
     

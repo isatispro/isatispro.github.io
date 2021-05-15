@@ -6,7 +6,7 @@
   <link href="http://www.isatis.top/atom.xml" rel="self"/>
   
   <link href="http://www.isatis.top/"/>
-  <updated>2021-05-09T14:01:01.739Z</updated>
+  <updated>2021-05-15T15:57:29.941Z</updated>
   <id>http://www.isatis.top/</id>
   
   <author>
@@ -17,11 +17,39 @@
   <generator uri="https://hexo.io/">Hexo</generator>
   
   <entry>
+    <title>manjaro配置kdump</title>
+    <link href="http://www.isatis.top/2021/05/15/manjaro-pei-zhi-kdump/"/>
+    <id>http://www.isatis.top/2021/05/15/manjaro-pei-zhi-kdump/</id>
+    <published>2021-05-15T14:51:40.000Z</published>
+    <updated>2021-05-15T15:57:29.941Z</updated>
+    
+    <content type="html"><![CDATA[<h1 id="Kdump和crash"><a href="#Kdump和crash" class="headerlink" title="Kdump和crash"></a>Kdump和crash</h1><p>我们的程序崩溃的时候可以设置生成core文件，通过分析core文件，通过core文件，我们就可以看到问题发生的“车祸现场”。当内核崩溃的时候，可以通过kdump来保存现场情况。应用程序崩溃的时候是内核帮我们保存了发生问题时的内在，而内核崩溃的时候，显然原来的逻辑就不能用了，而Kdump的原理是利用kexec启动到第二个内核，在第二个内核中保存第一个内核的内存情况，然后通过crash分析。所以就需要在第一个内核中保留一部分内存给第二个内核使用，当第一个内核崩溃的时候，通过保留的内存加载第二个内核。<br>关于kdump的配置参考的是arch linux的wikii介绍 <a href="https://wiki.archlinux.org/title/Kdump">Kdump</a></p><h1 id="配置内核选项"><a href="#配置内核选项" class="headerlink" title="配置内核选项"></a>配置内核选项</h1><p>编译更换内核的方法参考上一篇《arch-linux更换内核》，需要确保以下几个选项开启，然后编译更换内核。</p><pre class="line-numbers language-none"><code class="language-none">CONFIG_DEBUG_INFO=yCONFIG_CRASH_DUMP=yCONFIG_PROC_VMCORE=y<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span></span></code></pre><h1 id="配置启动参数"><a href="#配置启动参数" class="headerlink" title="配置启动参数"></a>配置启动参数</h1><p>要给第二个内核预留内存空间，通过在bootloader中添加命令来实现，需要添加一条“crashkernel=64M”参数，根据arch wiki的介绍，64M足够捕捉12G内存的设备的内存了。arch wiki上介绍的是syslinux的配置方法，manjaro默认使用的是grub来引导的，grub配置可以采用以下步骤</p><h2 id="1-编辑-etc-default-grub文件，在GRUB-CMDLINE-LINUX-DEFAULT中添加crashkernel-512M"><a href="#1-编辑-etc-default-grub文件，在GRUB-CMDLINE-LINUX-DEFAULT中添加crashkernel-512M" class="headerlink" title="1. 编辑/etc/default/grub文件，在GRUB_CMDLINE_LINUX_DEFAULT中添加crashkernel=512M"></a>1. 编辑/etc/default/grub文件，在GRUB_CMDLINE_LINUX_DEFAULT中添加crashkernel=512M</h2><pre class="line-numbers language-none"><code class="language-none">GRUB_CMDLINE_LINUX_DEFAULT="quiet apparmor=1 security=apparmor crashkernel=512M udev.log_priority=3"<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre><h2 id="2-重新生成引导配置，更新grub引导选项"><a href="#2-重新生成引导配置，更新grub引导选项" class="headerlink" title="2. 重新生成引导配置，更新grub引导选项"></a>2. 重新生成引导配置，更新grub引导选项</h2><pre class="line-numbers language-none"><code class="language-none">sudo update-grub<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre><h2 id="3-配置成功后可以在-proc-iomem中看到Crash-Kernel段"><a href="#3-配置成功后可以在-proc-iomem中看到Crash-Kernel段" class="headerlink" title="3. 配置成功后可以在/proc/iomem中看到Crash Kernel段"></a>3. 配置成功后可以在<code>/proc/iomem</code>中看到<code>Crash Kernel</code>段</h2><pre class="line-numbers language-none"><code class="language-none">00000000-00000000 : System ROM00000000-00000000 : System RAM00000000-00000000 : Crash kernel00000000-00000000 : ACPI Tables00000000-00000000 : ACPI Non-volatile Storage00000000-00000000 : System RAM00000000-00000000 : PCI Bus 0000:00<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre><h1 id="添加kdump的服务"><a href="#添加kdump的服务" class="headerlink" title="添加kdump的服务"></a>添加kdump的服务</h1><p>添加kdump需要在<code>/etc/systemd/system/</code>目录下添加一个<code>kdump.service</code>的文件。可以参照arch wiki上的介绍来，下面是我的配置</p><pre class="line-numbers language-none"><code class="language-none">[Unit]Description=Load dump capture kernelAfter=local-fs.target[Service]ExecStart=/usr/bin/kexec -p /boot/vmlinuz-isatis --initrd=/boot/initramfs-isatis.img --append="root=/dev/sda1 single irqpoll reset_devices"Type=oneshot[Install]WantedBy=multi-user.target<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre><p>配置好以后可以启动服务</p><pre class="line-numbers language-none"><code class="language-none">systemctl enable kdump<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre><h1 id="测试crash配置"><a href="#测试crash配置" class="headerlink" title="测试crash配置"></a>测试crash配置</h1><p>正常重启后我们添加的kdump服务就会运行，可以通过<code>cat /sys/kernel/kexec_crash_loaded</code>来查看是否正常运行，值为1就是在正常运行了。如果没有运行可以手动执行下服务中<code>ExecStart</code>后面的指令，看看报错信息。</p><pre class="line-numbers language-none"><code class="language-none">❯ cat /sys/kernel/kexec_crash_loaded1<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span></span></code></pre><p>配置好以后可以手动触发来测试配置</p><pre class="line-numbers language-none"><code class="language-none">echo c &gt; /proc/sysrq-trigger<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre><p>第一个内核挂掉后，如果正常就可以进入第二个内核，在第二个内核中的<code>/proc/vmcore</code>就是第一个内核的内存镜像文件，可以通过下面的命令保存crash文件，可以通过crash工具来分析这个文件，研究内核崩溃的原因。</p><pre class="line-numbers language-none"><code class="language-none">cp /proc/vmcore ./crash.dump<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre><p>arck wiki上提供了一个<code>makedumpfile</code>工具可以保存小一点的内核，空间拮据的可以试试，我暂时够用，就没有用。arch wiki上还提供了一个自动保存crash dump的配置配置，后面有需要再研究，暂时手动保存够用了。</p><h1 id="遇到的问题"><a href="#遇到的问题" class="headerlink" title="遇到的问题"></a>遇到的问题</h1><p>最开始按照arch wiki上的kexec命令进行配置，crash掉后无法进入第二个内核，后来在arch的bbs找到一个同样的问题，<a href="https://bbs.archlinux.org/viewtopic.php?id=182324">Unable to setup Kdump.</a><br>因为我用的是虚拟机，貌似设置CPU数量大于1都无法正常进入第二个内核，可能是虚拟机的bug。后面按照那哥们的配置，把虚拟的CPU数量改为1，正常进入了第二个内核。</p>]]></content>
+    
+    
+      
+      
+    <summary type="html">&lt;h1 id=&quot;Kdump和crash&quot;&gt;&lt;a href=&quot;#Kdump和crash&quot; class=&quot;headerlink&quot; title=&quot;Kdump和crash&quot;&gt;&lt;/a&gt;Kdump和crash&lt;/h1&gt;&lt;p&gt;我们的程序崩溃的时候可以设置生成core文件，通过分析core文件，</summary>
+      
+    
+    
+    
+    
+    <category term="manjaro" scheme="http://www.isatis.top/tags/manjaro/"/>
+    
+    <category term="arch" scheme="http://www.isatis.top/tags/arch/"/>
+    
+    <category term="crash" scheme="http://www.isatis.top/tags/crash/"/>
+    
+    <category term="kdump" scheme="http://www.isatis.top/tags/kdump/"/>
+    
+  </entry>
+  
+  <entry>
     <title>manjaro(arch linux)更换内核</title>
     <link href="http://www.isatis.top/2021/05/09/arch-linux-geng-huan-nei-he/"/>
     <id>http://www.isatis.top/2021/05/09/arch-linux-geng-huan-nei-he/</id>
     <published>2021-05-09T08:50:05.000Z</published>
-    <updated>2021-05-09T14:01:01.739Z</updated>
+    <updated>2021-05-15T14:54:19.661Z</updated>
     
     <content type="html"><![CDATA[<p>我使用的manjaro发行版，想要自己做更改内核选项做些实验，需要手动编译内核，manjaro跟arch linux 是一个妈生的，所以可以参考arch linux上更换内核的<a href="https://wiki.archlinux.org/title/Kernel/Traditional_compilation#Preparation">wiki</a>来进行操作。不得不说，arch 的wiki真的给力，aur也爽。</p><h1 id="下载解压内核"><a href="#下载解压内核" class="headerlink" title="下载解压内核"></a>下载解压内核</h1><p>从linux kernel 的官网上下载你需要版本的内核（自己现在使用的内核版本可以使用uname -r查看，保险一点可以下载跟当前系统版本一样的内核)，例如我的是5.11.16，就下载5.11.16版本的。下载得到linux-5.11.16.tar.gz<br>下载后解压内核。官网下载慢可以在国内的镜像站上找找，例如中科大的镜像源。</p><pre class="line-numbers language-none"><code class="language-none">tar -zxvf linux-5.11.16.tar.gz<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre><p>解压进入对应的目录，并clean下，确保整个内核是干净的</p><pre class="line-numbers language-none"><code class="language-none">cd linux-5.11.16make mrproper<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span></span></code></pre><h1 id="配置内核"><a href="#配置内核" class="headerlink" title="配置内核"></a>配置内核</h1><p>内核编译是依靠.config文件进行功能的裁剪的，为了确保新编出来的内核配置可以在当前的系统正常跑起来，所以我们需要使用当前系统的默认配置。可以通过下面这条命令把当前系统正在用的内核编译选项保存下来。</p><pre class="line-numbers language-none"><code class="language-none">zcat /proc/config.gz &gt; .config<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre><p>保存后使用make menuconfig 配置下自己想要的选项，具体配置需要看个人需要。其中 CONFIG_LOCALVERSION 和 CONFIG_DEFAULT_HOSTNAME 建议改为自定义的内容，避免和当前系统的内核文件冲突。</p><pre class="line-numbers language-none"><code class="language-none">CONFIG_INIT_ENV_ARG_LIMIT=32# CONFIG_COMPILE_TEST is not setCONFIG_LOCALVERSION="-isatis"# CONFIG_LOCALVERSION_AUTO is not setCONFIG_BUILD_SALT=""CONFIG_HAVE_KERNEL_GZIP=yCONFIG_KERNEL_ZSTD=yCONFIG_DEFAULT_INIT=""CONFIG_DEFAULT_HOSTNAME="isatis"CONFIG_SWAP=y<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre><h1 id="编译内核"><a href="#编译内核" class="headerlink" title="编译内核"></a>编译内核</h1><p>配置好后，直接make -j9就可以开始编译了，-j9可以有一定的加速，后面的数字需要看你的cpu核心数，例如你是两核的CPU,就可以用 make -j9</p><pre class="line-numbers language-none"><code class="language-none">make -j8<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre><h1 id="编译安装必要的模块"><a href="#编译安装必要的模块" class="headerlink" title="编译安装必要的模块"></a>编译安装必要的模块</h1><p>没什么好说的，两条编译指令直接敲就完事了</p><pre class="line-numbers language-none"><code class="language-none">make modules &amp;&amp; make modules_install<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre><h1 id="拷贝编译好的内核到-boot目录"><a href="#拷贝编译好的内核到-boot目录" class="headerlink" title="拷贝编译好的内核到/boot目录"></a>拷贝编译好的内核到/boot目录</h1><p>实际启动的是生成的bzImage内核，我的是x86_64的就用如下命令拷贝</p><pre class="line-numbers language-none"><code class="language-none">cp -v arch/x86_64/boot/bzImage /boot/vmlinuz-isatis<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre><p>这里文件命令最好是vmlinuz-xxx形式的，-后的可以自定义，前面的用vmlinuz,不然后面生成.img文件的时候可能会出错</p><h1 id="制作初始化内在盘"><a href="#制作初始化内在盘" class="headerlink" title="制作初始化内在盘"></a>制作初始化内在盘</h1><p>首先是拷贝配置文件，后面可以根据这个配置文件自动生成 ram disk文件。</p><pre class="line-numbers language-none"><code class="language-none">cd /etc/mkinitcpio.dcp linux510.preset isatis.preset<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span></span></code></pre><p>然后编辑这个文件,ALL_kver后面的换成刚编译的内核，default_image后面的就是启动用的，fallback_image是用来回滚用的，都改成自定义的。</p><pre class="line-numbers language-none"><code class="language-none"># mkinitcpio preset file for the 'linux510' packageALL_config="/etc/mkinitcpio.conf"ALL_kver="/boot/vmlinuz-isatis"PRESETS=('default' 'fallback')#default_config="/etc/mkinitcpio.conf"default_image="/boot/initramfs-isatis.img"#default_options=""#fallback_config="/etc/mkinitcpio.conf"fallback_image="/boot/initramfs-isatis-fallback.img"fallback_options="-S autodetect"<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre><p>使用mkinitcpio自动处理,参数就是刚才哪个.preset文件的名称</p><pre class="line-numbers language-none"><code class="language-none">mkinitcpio isatis<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre><h1 id="更新grub"><a href="#更新grub" class="headerlink" title="更新grub"></a>更新grub</h1><p>直接使用update-grub命令更新下grub引导信息就好了，grub会根据生成的.img自动更新</p><pre class="line-numbers language-none"><code class="language-none">update-grub<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre><h1 id="重启选择自己编译的内核"><a href="#重启选择自己编译的内核" class="headerlink" title="重启选择自己编译的内核"></a>重启选择自己编译的内核</h1><p>启动的grub高级选项可以看到刚才添加的内核initramfs-isatis，选择这个内核启动就可以通过到刚才编译的内核启动了<br>启动后右以用uname -r看看当前使用的内核，是不是刚才编译的。</p><pre class="line-numbers language-none"><code class="language-none">❯ uname -r5.11.16-isatis<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span></span></code></pre>]]></content>
     
@@ -34,7 +62,36 @@
     
     
     
-    <category term="arch linux kernel" scheme="http://www.isatis.top/tags/arch-linux-kernel/"/>
+    <category term="linux" scheme="http://www.isatis.top/tags/linux/"/>
+    
+    <category term="manjaro" scheme="http://www.isatis.top/tags/manjaro/"/>
+    
+    <category term="arch" scheme="http://www.isatis.top/tags/arch/"/>
+    
+    <category term="kernel" scheme="http://www.isatis.top/tags/kernel/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>内存布局分析(2)</title>
+    <link href="http://www.isatis.top/2021/01/02/nei-cun-bu-ju-fen-xi-2/"/>
+    <id>http://www.isatis.top/2021/01/02/nei-cun-bu-ju-fen-xi-2/</id>
+    <published>2021-01-02T01:19:39.000Z</published>
+    <updated>2021-05-09T12:58:59.480Z</updated>
+    
+    <content type="html"><![CDATA[<h1 id="内存布局分析-2"><a href="#内存布局分析-2" class="headerlink" title="内存布局分析(2)"></a>内存布局分析(2)</h1><span id="more"></span><h1 id="未初始化的全局变量（-bss）"><a href="#未初始化的全局变量（-bss）" class="headerlink" title="未初始化的全局变量（.bss）"></a>未初始化的全局变量（.bss）</h1><p>没有初始化过的变量被放在.bss区。这部分存储时没的占用磁盘空间，程序运行起来，这段会被map到一个虚拟地址上。因为没有实际的文件存储，所以映射出来也没有文件背景，但它们通常都会紧跟着有其对应的文件背景片段。对应到smaps的信息，可以猜测下面这两段可能就是mm和libmm.so的.bss段映射。</p><p>mm</p><pre class="line-numbers language-shell" data-language="shell"><code class="language-shell">01022000-02022000 rw-p 00000000 00:00 0Size:              16384 kBKernelPageSize:        4 kBMMUPageSize:           4 kBRss:                   0 kBPss:                   0 kBShared_Clean:          0 kBShared_Dirty:          0 kBPrivate_Clean:         0 kBPrivate_Dirty:         0 kBReferenced:            0 kBAnonymous:             0 kBLazyFree:              0 kBAnonHugePages:         0 kBShmemPmdMapped:        0 kBFilePmdMapped:        0 kBShared_Hugetlb:        0 kBPrivate_Hugetlb:       0 kBSwap:                  0 kBSwapPss:               0 kBLocked:                0 kBTHPeligible:0VmFlags: rd wr mr mw me ac<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre><p>libmm.so</p><pre class="line-numbers language-shell" data-language="shell"><code class="language-shell">b5f18000-b6f18000 rw-p 00000000 00:00 0Size:              16384 kBKernelPageSize:        4 kBMMUPageSize:           4 kBRss:                   0 kBPss:                   0 kBShared_Clean:          0 kBShared_Dirty:          0 kBPrivate_Clean:         0 kBPrivate_Dirty:         0 kBReferenced:            0 kBAnonymous:             0 kBLazyFree:              0 kBAnonHugePages:         0 kBShmemPmdMapped:        0 kBFilePmdMapped:        0 kBShared_Hugetlb:        0 kBPrivate_Hugetlb:       0 kBSwap:                  0 kBSwapPss:               0 kBLocked:                0 kBTHPeligible:0VmFlags: rd wr mr mw me ac<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre><ol><li> 同样的，要确认这两段的“身份”，首先看下对应的段表</li></ol><ul><li><p>mm</p>  <pre class="line-numbers language-shell" data-language="shell"><code class="language-shell">[23] .bss              NOBITS          01021040 1001040 1000004 00  WA  0   0  4<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre><p>  mm段表的地址是01021040，smaps中的地址段是01022000-02022000。01021040是小于01022000的，相差4032。是否就说明这段不是.bss段呢？别急，“.bss”段的长度是0x1000004,换算下来也差不多是16384KB。大小上是对得上的。另外我们打印出的gBss的地址为0x1021044，与段表上的似乎对得上。我们申请的gBss大小为4096 × 1024。大小为4096KB。实际通过gBss的我们就可以确认gBss有一部分空间是到了01022000-02022000这里面。那行如何验证呢？其实也很简单，我们将gBss变量全部初始化有内容，这时linux就会为我们分配出这4096KB的物理内存，如果这段占用的物理内存变大了，不就证明了我们的猜想了吗？</p></li><li><p>libmm.so</p>  <pre class="line-numbers language-shell" data-language="shell"><code class="language-shell">[20] .bss              NOBITS          01011040 1001040 1000004 00  WA  0   0  4<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre><p>  libmm.so段表的地址是01011040。smaps中地址段是b5f18000-b6f18000，libmm.so加载的基地址是0xb4f06000。那么这段减去基地址后实际就是0x1012000-0x2012000。01011040与b5f18000还是相差了4032。<br>  打印出的0xb5f17044，减去加载的基地址后为0x1011044。与mm的情况一样，同样我们也可以使用mm一样的方法去确认。</p></li></ul><ol start="2"><li> 补充</li></ol><p>例子中因为是只一个变量，我们可以直接知道这个变量。但实际工程中变量诸多，我们可以通过.symtab中的Ndx来寻找对应的变量。比如mm中.bss段的为23。那么在.symtab中就不难定位到gBss。<br>mm</p><pre class="line-numbers language-shell" data-language="shell"><code class="language-shell">Num:    Value  Size Type    Bind   Vis      Ndx Name89: 01021044 0x1000000 OBJECT  GLOBAL DEFAULT   23 gBss<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre><p>同样的，libmm.so中.bss段是20。在对应的.symtab中也不难定位到gBssLib</p><pre class="line-numbers language-shell" data-language="shell"><code class="language-shell">Num:    Value  Size Type    Bind   Vis      Ndx Name86: 01011044 0x1000000 OBJECT  GLOBAL DEFAULT   20 gBssLi<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre>]]></content>
+    
+    
+    <summary type="html">&lt;h1 id=&quot;内存布局分析-2&quot;&gt;&lt;a href=&quot;#内存布局分析-2&quot; class=&quot;headerlink&quot; title=&quot;内存布局分析(2)&quot;&gt;&lt;/a&gt;内存布局分析(2)&lt;/h1&gt;</summary>
+    
+    
+    
+    
+    <category term="内存优化&amp;分析" scheme="http://www.isatis.top/tags/%E5%86%85%E5%AD%98%E4%BC%98%E5%8C%96-%E5%88%86%E6%9E%90/"/>
+    
+    <category term="内存优化" scheme="http://www.isatis.top/tags/%E5%86%85%E5%AD%98%E4%BC%98%E5%8C%96/"/>
+    
+    <category term="内存管理" scheme="http://www.isatis.top/tags/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/"/>
     
   </entry>
   
@@ -52,29 +109,6 @@
       
     <summary type="html">&lt;h1 id=&quot;内存布局分析-1&quot;&gt;&lt;a href=&quot;#内存布局分析-1&quot; class=&quot;headerlink&quot; title=&quot;内存布局分析(1)&quot;&gt;&lt;/a&gt;内存布局分析(1)&lt;/h1&gt;&lt;h2 id=&quot;1-前言&quot;&gt;&lt;a href=&quot;#1-前言&quot; class=&quot;headerlink</summary>
       
-    
-    
-    
-    
-    <category term="内存优化&amp;分析" scheme="http://www.isatis.top/tags/%E5%86%85%E5%AD%98%E4%BC%98%E5%8C%96-%E5%88%86%E6%9E%90/"/>
-    
-    <category term="内存优化" scheme="http://www.isatis.top/tags/%E5%86%85%E5%AD%98%E4%BC%98%E5%8C%96/"/>
-    
-    <category term="内存管理" scheme="http://www.isatis.top/tags/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/"/>
-    
-  </entry>
-  
-  <entry>
-    <title>内存布局分析(2)</title>
-    <link href="http://www.isatis.top/2021/01/02/nei-cun-bu-ju-fen-xi-2/"/>
-    <id>http://www.isatis.top/2021/01/02/nei-cun-bu-ju-fen-xi-2/</id>
-    <published>2021-01-02T01:19:39.000Z</published>
-    <updated>2021-05-09T12:58:59.480Z</updated>
-    
-    <content type="html"><![CDATA[<h1 id="内存布局分析-2"><a href="#内存布局分析-2" class="headerlink" title="内存布局分析(2)"></a>内存布局分析(2)</h1><span id="more"></span><h1 id="未初始化的全局变量（-bss）"><a href="#未初始化的全局变量（-bss）" class="headerlink" title="未初始化的全局变量（.bss）"></a>未初始化的全局变量（.bss）</h1><p>没有初始化过的变量被放在.bss区。这部分存储时没的占用磁盘空间，程序运行起来，这段会被map到一个虚拟地址上。因为没有实际的文件存储，所以映射出来也没有文件背景，但它们通常都会紧跟着有其对应的文件背景片段。对应到smaps的信息，可以猜测下面这两段可能就是mm和libmm.so的.bss段映射。</p><p>mm</p><pre class="line-numbers language-shell" data-language="shell"><code class="language-shell">01022000-02022000 rw-p 00000000 00:00 0Size:              16384 kBKernelPageSize:        4 kBMMUPageSize:           4 kBRss:                   0 kBPss:                   0 kBShared_Clean:          0 kBShared_Dirty:          0 kBPrivate_Clean:         0 kBPrivate_Dirty:         0 kBReferenced:            0 kBAnonymous:             0 kBLazyFree:              0 kBAnonHugePages:         0 kBShmemPmdMapped:        0 kBFilePmdMapped:        0 kBShared_Hugetlb:        0 kBPrivate_Hugetlb:       0 kBSwap:                  0 kBSwapPss:               0 kBLocked:                0 kBTHPeligible:0VmFlags: rd wr mr mw me ac<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre><p>libmm.so</p><pre class="line-numbers language-shell" data-language="shell"><code class="language-shell">b5f18000-b6f18000 rw-p 00000000 00:00 0Size:              16384 kBKernelPageSize:        4 kBMMUPageSize:           4 kBRss:                   0 kBPss:                   0 kBShared_Clean:          0 kBShared_Dirty:          0 kBPrivate_Clean:         0 kBPrivate_Dirty:         0 kBReferenced:            0 kBAnonymous:             0 kBLazyFree:              0 kBAnonHugePages:         0 kBShmemPmdMapped:        0 kBFilePmdMapped:        0 kBShared_Hugetlb:        0 kBPrivate_Hugetlb:       0 kBSwap:                  0 kBSwapPss:               0 kBLocked:                0 kBTHPeligible:0VmFlags: rd wr mr mw me ac<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre><ol><li> 同样的，要确认这两段的“身份”，首先看下对应的段表</li></ol><ul><li><p>mm</p>  <pre class="line-numbers language-shell" data-language="shell"><code class="language-shell">[23] .bss              NOBITS          01021040 1001040 1000004 00  WA  0   0  4<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre><p>  mm段表的地址是01021040，smaps中的地址段是01022000-02022000。01021040是小于01022000的，相差4032。是否就说明这段不是.bss段呢？别急，“.bss”段的长度是0x1000004,换算下来也差不多是16384KB。大小上是对得上的。另外我们打印出的gBss的地址为0x1021044，与段表上的似乎对得上。我们申请的gBss大小为4096 × 1024。大小为4096KB。实际通过gBss的我们就可以确认gBss有一部分空间是到了01022000-02022000这里面。那行如何验证呢？其实也很简单，我们将gBss变量全部初始化有内容，这时linux就会为我们分配出这4096KB的物理内存，如果这段占用的物理内存变大了，不就证明了我们的猜想了吗？</p></li><li><p>libmm.so</p>  <pre class="line-numbers language-shell" data-language="shell"><code class="language-shell">[20] .bss              NOBITS          01011040 1001040 1000004 00  WA  0   0  4<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre><p>  libmm.so段表的地址是01011040。smaps中地址段是b5f18000-b6f18000，libmm.so加载的基地址是0xb4f06000。那么这段减去基地址后实际就是0x1012000-0x2012000。01011040与b5f18000还是相差了4032。<br>  打印出的0xb5f17044，减去加载的基地址后为0x1011044。与mm的情况一样，同样我们也可以使用mm一样的方法去确认。</p></li></ul><ol start="2"><li> 补充</li></ol><p>例子中因为是只一个变量，我们可以直接知道这个变量。但实际工程中变量诸多，我们可以通过.symtab中的Ndx来寻找对应的变量。比如mm中.bss段的为23。那么在.symtab中就不难定位到gBss。<br>mm</p><pre class="line-numbers language-shell" data-language="shell"><code class="language-shell">Num:    Value  Size Type    Bind   Vis      Ndx Name89: 01021044 0x1000000 OBJECT  GLOBAL DEFAULT   23 gBss<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre><p>同样的，libmm.so中.bss段是20。在对应的.symtab中也不难定位到gBssLib</p><pre class="line-numbers language-shell" data-language="shell"><code class="language-shell">Num:    Value  Size Type    Bind   Vis      Ndx Name86: 01011044 0x1000000 OBJECT  GLOBAL DEFAULT   20 gBssLi<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre>]]></content>
-    
-    
-    <summary type="html">&lt;h1 id=&quot;内存布局分析-2&quot;&gt;&lt;a href=&quot;#内存布局分析-2&quot; class=&quot;headerlink&quot; title=&quot;内存布局分析(2)&quot;&gt;&lt;/a&gt;内存布局分析(2)&lt;/h1&gt;</summary>
     
     
     

@@ -6,21 +6,17 @@
   <meta name="renderer" content="webkit">
   <meta http-equiv="X-UA-Compatible" content="IE=edge" >
   <link rel="dns-prefetch" href="http://www.isatis.top">
-  <title>内存布局分析(1) | Isatis&#39; Blog</title>
+  <title>Tag: crash | Isatis&#39; Blog</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="内存布局分析(1)1.前言内存资源是宝贵的，内存能少用决不多用。而想要如何优化内存使用的前提就是要找到是哪里使用了内存？用了多大了内存？需要注意的是，我们并不是调用malloc申请了的大的内存，就一定占用了那么大的内存。因为linux会在我们用到的时候才会给我们分配实际的物理内存。例如下面的，虽然申请了4100kB的虚拟地址空间，但实际使用的物理内存也只有4KB。所以申请的内存大小不等于实际使用的">
-<meta property="og:type" content="article">
-<meta property="og:title" content="内存布局分析(1)">
-<meta property="og:url" content="http://www.isatis.top/2021/01/02/nei-cun-bu-ju-fen-xi-1/index.html">
+  <meta name="description" content="上善若水任方圆">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Isatis&#39; Blog">
+<meta property="og:url" content="http://www.isatis.top/tags/crash/index.html">
 <meta property="og:site_name" content="Isatis&#39; Blog">
-<meta property="og:description" content="内存布局分析(1)1.前言内存资源是宝贵的，内存能少用决不多用。而想要如何优化内存使用的前提就是要找到是哪里使用了内存？用了多大了内存？需要注意的是，我们并不是调用malloc申请了的大的内存，就一定占用了那么大的内存。因为linux会在我们用到的时候才会给我们分配实际的物理内存。例如下面的，虽然申请了4100kB的虚拟地址空间，但实际使用的物理内存也只有4KB。所以申请的内存大小不等于实际使用的">
+<meta property="og:description" content="上善若水任方圆">
 <meta property="og:locale" content="zh_CN">
-<meta property="article:published_time" content="2021-01-02T01:19:39.000Z">
-<meta property="article:modified_time" content="2021-05-09T12:59:11.700Z">
 <meta property="article:author" content="Isatis.Yang">
-<meta property="article:tag" content="内存优化&amp;分析">
-<meta property="article:tag" content="内存优化">
-<meta property="article:tag" content="内存管理">
+<meta property="article:tag" content="开发者,程序猿,程序媛,极客,编程,代码,开源,IT网站,Developer,Programmer,Coder,Geek,linux,内核,内存管理,用户体验">
 <meta name="twitter:card" content="summary">
   
     <link rel="alternative" href="/atom.xml" title="Isatis&#39; Blog" type="application/atom+xml">
@@ -141,483 +137,72 @@
             <canvas data-colors="#eaeaea" data-sectionHeight="100" data-contentId="js-content" id="myCanvas1" class="anm-canvas"></canvas>
           </div>
           <div id="js-content" class="content-ll">
-            <article id="post-内存布局分析-1" class="article article-type-post " itemscope itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
+            
   
-    <h1 class="article-title" itemprop="name">
-      内存布局分析(1)
+  
+    
+    
+      
+      
+      <section class="archives-wrap">
+        <div class="archive-year-wrap">
+          <a href="/archives/2021" class="archive-year">2021</a>
+        </div>
+        <div class="archives">
+    
+    <article class="archive-article archive-type-post">
+  <div class="archive-article-inner">
+    <header class="archive-article-header">
+      	<div class="article-meta">
+	      	<a href="/2021/05/15/manjaro-pei-zhi-kdump/" class="archive-article-date">
+  	<time datetime="2021-05-15T14:51:40.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2021-05-15</time>
+</a>
+        </div>
+    	 
+  
+    <h1 itemprop="name">
+      <a class="archive-article-title" href="/2021/05/15/manjaro-pei-zhi-kdump/">manjaro配置kdump</a>
     </h1>
   
 
-        
-        <a href="/2021/01/02/nei-cun-bu-ju-fen-xi-1/" class="archive-article-date">
-  	<time datetime="2021-01-02T01:19:39.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2021-01-02</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h1 id="内存布局分析-1"><a href="#内存布局分析-1" class="headerlink" title="内存布局分析(1)"></a>内存布局分析(1)</h1><h2 id="1-前言"><a href="#1-前言" class="headerlink" title="1.前言"></a>1.前言</h2><p>内存资源是宝贵的，内存能少用决不多用。而想要如何优化内存使用的前提就是要找到是哪里使用了内存？用了多大了内存？需要注意的是，我们并不是调用malloc申请了的大的内存，就一定占用了那么大的内存。因为linux会在我们用到的时候才会给我们分配实际的物理内存。例如下面的，虽然申请了4100kB的虚拟地址空间，但实际使用的物理内存也只有4KB。所以申请的内存大小不等于实际使用的物理内存，某些时候申请了很多，但实际根本不会用到。建议的思路在于看到哪一段占用了物理内存，再对应到代码中去，对这块业务进行优化。而通过查看进程的smaps,可以看到程序实际运行起来，物理内存实际占用情况。但问题就在于smap出来的信息，知道了哪个地址片段占用了大量的内存（Rss值）但是我只有一个地址信息，而如何确认smaps对应到代码中的变量或者malloc操作呢？下面以一个实例来分析下</p>
-<p>代码仓库：<a target="_blank" rel="noopener" href="https://github.com/isatispro/mm.git">https://github.com/isatispro/mm.git</a></p>
-<p>实验平台：树莓派4B</p>
-<h2 id="2-主要内存消耗点及优化点"><a href="#2-主要内存消耗点及优化点" class="headerlink" title="2.主要内存消耗点及优化点"></a>2.主要内存消耗点及优化点</h2><p>程序 = 代码 + 数据结构。真正代码段上能优化的很少，数据结构的核心还是在数据上，所以分析和优化的点多数都在数据上。数据的优化点可以从我们定义的全局变量，调用的malloc申请的内存上先下手,其中全局变量又会分到.data段和.bss段，而malloc又会分为brk的内存和mmap的内存。</p>
-<h3 id="1-全局变量"><a href="#1-全局变量" class="headerlink" title="1. 全局变量"></a>1. 全局变量</h3><p>mm</p>
-<pre class="line-numbers language-c" data-language="c"><code class="language-c"><span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">define</span> <span class="token expression"><span class="token function">PAGE_SIZE</span> <span class="token punctuation">(</span><span class="token number">4096</span><span class="token punctuation">)</span>#define <span class="token function">SIZE_1K</span> <span class="token punctuation">(</span><span class="token number">1024</span><span class="token punctuation">)</span><span class="token keyword">char</span> <span class="token operator">*</span>pText <span class="token operator">=</span> </span><span class="token string">"The  mallopt()  function  adjusts parameters that control the behavior of the memory-allocation functions (see malloc(3)).  The param argument specifies the parameter to be modi‐fied, and value specifies the new value for that parameter."</span><span class="token expression"><span class="token punctuation">;</span></span></span>
-<span class="token keyword">int</span> gData<span class="token punctuation">[</span>PAGE_SIZE <span class="token operator">*</span> <span class="token number">1024</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token number">1</span><span class="token punctuation">}</span><span class="token punctuation">;</span><span class="token keyword">int</span> gBss<span class="token punctuation">[</span>PAGE_SIZE <span class="token operator">*</span> <span class="token number">1024</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token number">0</span><span class="token punctuation">}</span><span class="token punctuation">;</span><span aria-hidden="true" class="line-numbers-rows"><span></span><span></span></span></code></pre>
-
-<p>libmm.so</p>
-<pre class="line-numbers language-c" data-language="c"><code class="language-c"><span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">define</span> <span class="token expression"><span class="token function">PAGE_SIZE</span> <span class="token punctuation">(</span><span class="token number">4096</span><span class="token punctuation">)</span><span class="token keyword">char</span> <span class="token operator">*</span>pTextLib <span class="token operator">=</span> </span><span class="token string">"The  mallopt()  function  adjusts parameters that control the behavior of the memory-allocation functions (see malloc(3)).  The param argument specifies the parameter to be modi‐fied, and value specifies the new value for that parameter."</span><span class="token expression"><span class="token punctuation">;</span></span></span>
-<span class="token keyword">int</span> gDataLib<span class="token punctuation">[</span>PAGE_SIZE <span class="token operator">*</span> <span class="token number">1024</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token number">1</span><span class="token punctuation">}</span><span class="token punctuation">;</span><span class="token keyword">int</span> gBssLib<span class="token punctuation">[</span>PAGE_SIZE <span class="token operator">*</span> <span class="token number">1024</span><span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">{</span><span class="token number">0</span><span class="token punctuation">}</span><span class="token punctuation">;</span><span aria-hidden="true" class="line-numbers-rows"><span></span><span></span></span></code></pre>
-
-<p>在函数内部定义的变量，会被分配在栈空间。而已经初始化的全局变量放在.data段，未初始化的在.bss段，这部分会在程序加载时就映射到内存空间上。</p>
-<h4 id="已初始化的全局变量（-data）"><a href="#已初始化的全局变量（-data）" class="headerlink" title="已初始化的全局变量（.data）"></a>已初始化的全局变量（.data）</h4><p>先看下smaps的情况</p>
-<p>mm</p>
-<pre class="line-numbers language-none"><code class="language-none">00010000-00011000 r-xp 00000000 00:28 2752530    /mnt/nfs/mm/mm
-Size:                  4 kB
-KernelPageSize:        4 kB
-MMUPageSize:           4 kB
-Rss:                   4 kB
-Pss:                   4 kB
-Shared_Clean:          0 kB
-Shared_Dirty:          0 kB
-Private_Clean:         4 kB
-Private_Dirty:         0 kB
-Referenced:            4 kB
-Anonymous:             0 kB
-LazyFree:              0 kB
-AnonHugePages:         0 kB
-ShmemPmdMapped:        0 kB
-FilePmdMapped:        0 kB
-Shared_Hugetlb:        0 kB
-Private_Hugetlb:       0 kB
-Swap:                  0 kB
-SwapPss:               0 kB
-Locked:                0 kB
-THPeligible:		0
-VmFlags: rd ex mr mw me dw
-00020000-00021000 r--p 00000000 00:28 2752530    /mnt/nfs/mm/mm
-Size:                  4 kB
-KernelPageSize:        4 kB
-MMUPageSize:           4 kB
-Rss:                   4 kB
-Pss:                   4 kB
-Shared_Clean:          0 kB
-Shared_Dirty:          0 kB
-Private_Clean:         0 kB
-Private_Dirty:         4 kB
-Referenced:            4 kB
-Anonymous:             4 kB
-LazyFree:              0 kB
-AnonHugePages:         0 kB
-ShmemPmdMapped:        0 kB
-FilePmdMapped:        0 kB
-Shared_Hugetlb:        0 kB
-Private_Hugetlb:       0 kB
-Swap:                  0 kB
-SwapPss:               0 kB
-Locked:                0 kB
-THPeligible:		0
-VmFlags: rd mr mw me dw ac
-00021000-01022000 rw-p 00001000 00:28 2752530    /mnt/nfs/mm/mm
-Size:              16388 kB
-KernelPageSize:        4 kB
-MMUPageSize:           4 kB
-Rss:                  64 kB
-Pss:                  64 kB
-Shared_Clean:          0 kB
-Shared_Dirty:          0 kB
-Private_Clean:        56 kB
-Private_Dirty:         8 kB
-Referenced:           64 kB
-Anonymous:             8 kB
-LazyFree:              0 kB
-AnonHugePages:         0 kB
-ShmemPmdMapped:        0 kB
-FilePmdMapped:        0 kB
-Shared_Hugetlb:        0 kB
-Private_Hugetlb:       0 kB
-Swap:                  0 kB
-SwapPss:               0 kB
-Locked:                0 kB
-THPeligible:		0
-VmFlags: rd wr mr mw me dw ac
-01022000-02022000 rw-p 00000000 00:00 0
-Size:              16384 kB
-KernelPageSize:        4 kB
-MMUPageSize:           4 kB
-Rss:                   0 kB
-Pss:                   0 kB
-Shared_Clean:          0 kB
-Shared_Dirty:          0 kB
-Private_Clean:         0 kB
-Private_Dirty:         0 kB
-Referenced:            0 kB
-Anonymous:             0 kB
-LazyFree:              0 kB
-AnonHugePages:         0 kB
-ShmemPmdMapped:        0 kB
-FilePmdMapped:        0 kB
-Shared_Hugetlb:        0 kB
-Private_Hugetlb:       0 kB
-Swap:                  0 kB
-SwapPss:               0 kB
-Locked:                0 kB
-THPeligible:		0
-VmFlags: rd wr mr mw me ac<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
-
-<p>limmm.so</p>
-<pre class="line-numbers language-none"><code class="language-none">b4f06000-b4f07000 r-xp 00000000 00:28 2752531    /mnt/nfs/mm/libmm.so
-Size:                  4 kB
-KernelPageSize:        4 kB
-MMUPageSize:           4 kB
-Rss:                   4 kB
-Pss:                   4 kB
-Shared_Clean:          0 kB
-Shared_Dirty:          0 kB
-Private_Clean:         4 kB
-Private_Dirty:         0 kB
-Referenced:            4 kB
-Anonymous:             0 kB
-LazyFree:              0 kB
-AnonHugePages:         0 kB
-ShmemPmdMapped:        0 kB
-FilePmdMapped:        0 kB
-Shared_Hugetlb:        0 kB
-Private_Hugetlb:       0 kB
-Swap:                  0 kB
-SwapPss:               0 kB
-Locked:                0 kB
-THPeligible:		0
-VmFlags: rd ex mr mw me
-b4f07000-b4f16000 ---p 00001000 00:28 2752531    /mnt/nfs/mm/libmm.so
-Size:                 60 kB
-KernelPageSize:        4 kB
-MMUPageSize:           4 kB
-Rss:                   0 kB
-Pss:                   0 kB
-Shared_Clean:          0 kB
-Shared_Dirty:          0 kB
-Private_Clean:         0 kB
-Private_Dirty:         0 kB
-Referenced:            0 kB
-Anonymous:             0 kB
-LazyFree:              0 kB
-AnonHugePages:         0 kB
-ShmemPmdMapped:        0 kB
-FilePmdMapped:        0 kB
-Shared_Hugetlb:        0 kB
-Private_Hugetlb:       0 kB
-Swap:                  0 kB
-SwapPss:               0 kB
-Locked:                0 kB
-THPeligible:		0
-VmFlags: mr mw me
-b4f16000-b4f17000 r--p 00000000 00:28 2752531    /mnt/nfs/mm/libmm.so
-Size:                  4 kB
-KernelPageSize:        4 kB
-MMUPageSize:           4 kB
-Rss:                   4 kB
-Pss:                   4 kB
-Shared_Clean:          0 kB
-Shared_Dirty:          0 kB
-Private_Clean:         0 kB
-Private_Dirty:         4 kB
-Referenced:            4 kB
-Anonymous:             4 kB
-LazyFree:              0 kB
-AnonHugePages:         0 kB
-ShmemPmdMapped:        0 kB
-FilePmdMapped:        0 kB
-Shared_Hugetlb:        0 kB
-Private_Hugetlb:       0 kB
-Swap:                  0 kB
-SwapPss:               0 kB
-Locked:                0 kB
-THPeligible:		0
-VmFlags: rd mr mw me ac
-b4f17000-b5f18000 rw-p 00001000 00:28 2752531    /mnt/nfs/mm/libmm.so
-Size:              16388 kB
-KernelPageSize:        4 kB
-MMUPageSize:           4 kB
-Rss:                  64 kB
-Pss:                  64 kB
-Shared_Clean:          0 kB
-Shared_Dirty:          0 kB
-Private_Clean:        56 kB
-Private_Dirty:         8 kB
-Referenced:           64 kB
-Anonymous:             8 kB
-LazyFree:              0 kB
-AnonHugePages:         0 kB
-ShmemPmdMapped:        0 kB
-FilePmdMapped:        0 kB
-Shared_Hugetlb:        0 kB
-Private_Hugetlb:       0 kB
-Swap:                  0 kB
-SwapPss:               0 kB
-Locked:                0 kB
-THPeligible:		0
-VmFlags: rd wr mr mw me ac
-b5f18000-b6f18000 rw-p 00000000 00:00 0
-Size:              16384 kB
-KernelPageSize:        4 kB
-MMUPageSize:           4 kB
-Rss:                   0 kB
-Pss:                   0 kB
-Shared_Clean:          0 kB
-Shared_Dirty:          0 kB
-Private_Clean:         0 kB
-Private_Dirty:         0 kB
-Referenced:            0 kB
-Anonymous:             0 kB
-LazyFree:              0 kB
-AnonHugePages:         0 kB
-ShmemPmdMapped:        0 kB
-FilePmdMapped:        0 kB
-Shared_Hugetlb:        0 kB
-Private_Hugetlb:       0 kB
-Swap:                  0 kB
-SwapPss:               0 kB
-Locked:                0 kB
-THPeligible:		0
-VmFlags: rd wr mr mw me ac<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
-
-<p>我们的全局变量一定是可读可写的，所以它的权限必定有读写。而且因为已经初始化的全局变量是有实际的数据内容，并且保存在程序的文件中，所以这部分内存是有文件背景的映射，所以有两段我们可以猜测它会是.data段的映射。</p>
-<pre class="line-numbers language-shell" data-language="shell"><code class="language-shell">00021000-01022000 rw-p 00001000 00:28 2752530    /mnt/nfs/mm/mm
-Size:              16388 kB
-KernelPageSize:        4 kB
-MMUPageSize:           4 kB
-Rss:                  64 kB
-Pss:                  64 kB
-Shared_Clean:          0 kB
-Shared_Dirty:          0 kB
-Private_Clean:        56 kB
-Private_Dirty:         8 kB
-Referenced:           64 kB
-Anonymous:             8 kB
-LazyFree:              0 kB
-AnonHugePages:         0 kB
-ShmemPmdMapped:        0 kB
-FilePmdMapped:        0 kB
-Shared_Hugetlb:        0 kB
-Private_Hugetlb:       0 kB
-Swap:                  0 kB
-SwapPss:               0 kB
-Locked:                0 kB
-THPeligible:		0
-VmFlags: rd wr mr mw me dw ac<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
-
-<pre class="line-numbers language-shell" data-language="shell"><code class="language-shell">b4f17000-b5f18000 rw-p 00001000 00:28 2752531    /mnt/nfs/mm/libmm.so
-Size:              16388 kB
-KernelPageSize:        4 kB
-MMUPageSize:           4 kB
-Rss:                  64 kB
-Pss:                  64 kB
-Shared_Clean:          0 kB
-Shared_Dirty:          0 kB
-Private_Clean:        56 kB
-Private_Dirty:         8 kB
-Referenced:           64 kB
-Anonymous:             8 kB
-LazyFree:              0 kB
-AnonHugePages:         0 kB
-ShmemPmdMapped:        0 kB
-FilePmdMapped:        0 kB
-Shared_Hugetlb:        0 kB
-Private_Hugetlb:       0 kB
-Swap:                  0 kB
-SwapPss:               0 kB
-Locked:                0 kB
-THPeligible:		0
-VmFlags: rd wr mr mw me ac<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
-
-<h5 id="再看下段表"><a href="#再看下段表" class="headerlink" title="再看下段表"></a>再看下段表</h5><p>mm</p>
-<pre class="line-numbers language-shell" data-language="shell"><code class="language-shell">[22] .data             PROGBITS        00021034 001034 100000c 00  WA  0   0  4<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre>
-
-<p>libmm.so</p>
-<pre class="line-numbers language-shell" data-language="shell"><code class="language-shell">[19] .data             PROGBITS        00011038 001038 1000008 00  WA  0   0  4<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre>
-
-<ul>
-<li>  mm</li>
-</ul>
-<p>.data 段表的Addr是00021034。smaps段的地址是 00021000-01022000。00021034是位于00021000-01022000中间的。</p>
-<ul>
-<li>  libmm.so</li>
-</ul>
-<p>.data 段表中的Addr是00011038。而smaps中的地址是 b4f17000-b5f18000。需要注意的是动态库段表中的不是真正的虚拟地址。计算时需要减去动态库的基地址。从smaps看到libmm.so加载的基地址是 b4f06000 。b4f17000-b5f18000减去基址址为 00011000-1012000。00011038也是位于00011000-1012000内。</p>
-<p>然后看看全局变量的符号表，<br>可以mm看到gData这个变量的地址是00021040，位于地址范围00021000-01022000内</p>
-<pre class="line-numbers language-shell" data-language="shell"><code class="language-shell">110: 02021044     0 NOTYPE  GLOBAL DEFAULT   23 _end
-111: 00010478     0 FUNC    GLOBAL DEFAULT   13 _start
-112: 02021044     0 NOTYPE  GLOBAL DEFAULT   23 __end__
-113: 01021040     0 NOTYPE  GLOBAL DEFAULT   23 __bss_start
-114: 00010568   192 FUNC    GLOBAL DEFAULT   13 main
-115: 00021040 0x1000000 OBJECT  GLOBAL DEFAULT   22 gData
-116: 01021040     0 OBJECT  GLOBAL HIDDEN    22 __TMC_END__
-117: 00000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_registerTMCloneTable
-118: 00000000     0 FUNC    GLOBAL DEFAULT  UND abort@@GLIBC_2.4
-119: 000103ec     0 FUNC    GLOBAL HIDDEN    11 _init<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
-
-<p>libmm.so 中gDataLib的0001103c，位于地址范围00011000-1012000内</p>
-<pre class="line-numbers language-shell" data-language="shell"><code class="language-shell">75: 00000384     0 NOTYPE  LOCAL  DEFAULT   10 $d
-76: 00000388     0 NOTYPE  LOCAL  DEFAULT   10 $a
-77: 0001103c 0x1000000 OBJECT  GLOBAL DEFAULT   19 gDataLib
-78: 00000000     0 FUNC    WEAK   DEFAULT  UND __cxa_finalize@@GLIBC_2.4
-79: 00000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_deregisterTMCloneTab
-80: 00000000     0 FUNC    GLOBAL DEFAULT  UND printf@@GLIBC_2.4
-81: 0101103c     4 OBJECT  GLOBAL DEFAULT   19 pTextLib
-82: 00000000     0 FUNC    GLOBAL DEFAULT  UND puts@@GLIBC_2.4
-83: 00000000     0 NOTYPE  WEAK   DEFAULT  UND __gmon_start__
-84: 000004dc   124 FUNC    GLOBAL DEFAULT   11 mm_lib_init
-85: 00000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_registerTMCloneTable
-86: 01011044 0x1000000 OBJECT  GLOBAL DEFAULT   20 gBssLib<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
-
-<p>现在基本可以确认smaps中00021000-01022000和b4f17000-b5f18000这两段分别是mm和libmm.so的.data段的映射。它们现在分别占用了64KB。虽然它们申请的远大于这个值，但实际上就占用的物理内存并不多。另外在代码里并没有去该变过这段地址内的内容，所以它们的Dirty部分都不大，而这些页面的，后续都是可以交换被拿出来给其它地方用的。</p>
-<p>虽然分析到这里基本可以确认，但我们仍然可以在代码里打印出这两个变量的地址确认下。gData的地址为0x21040，和通过符号表里查到的是一样的，另外gDataLib的地址为0xb4f1703c，减去libmm.so加载的基址0xb4f06000，得到0x1103c，也与符号表里查到的一样。</p>
-<p>mm:</p>
-<pre class="line-numbers language-shell" data-language="shell"><code class="language-shell">data addr:0x21040<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre>
-
-<p>libmm.so</p>
-<pre class="line-numbers language-shell" data-language="shell"><code class="language-shell">data addr:0xb4f1703c<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
+        <div class="article-info info-on-right">
+          
 	<div class="article-tag tagcloud">
 		<i class="icon-price-tags icon"></i>
 		<ul class="article-tag-list">
 			 
         		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">内存优化&分析</a>
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">manjaro</a>
         		</li>
       		 
         		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">内存优化</a>
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">arch</a>
         		</li>
       		 
         		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">内存管理</a>
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">crash</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">kdump</a>
         		</li>
       		
 		</ul>
 	</div>
 
-      
+          
 
-      
-
-      
-        
-<div class="share-btn share-icons tooltip-left">
-  <div class="tooltip tooltip-east">
-    <span class="tooltip-item">
-      <a href="javascript:;" class="share-sns share-outer">
-        <i class="icon icon-share"></i>
-      </a>
-    </span>
-    <span class="tooltip-content">
-      <div class="share-wrap">
-        <div class="share-icons">
-          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
-            <i class="icon icon-weibo"></i>
-          </a>
-          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
-            <i class="icon icon-weixin"></i>
-          </a>
-          <a class="qq share-sns" href="javascript:;" data-type="qq">
-            <i class="icon icon-qq"></i>
-          </a>
-          <a class="douban share-sns" href="javascript:;" data-type="douban">
-            <i class="icon icon-douban"></i>
-          </a>
-          <a class="qzone share-sns" href="javascript:;" data-type="qzone">
-            <i class="icon icon-qzone"></i>
-          </a>
-          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
-            <i class="icon icon-facebook"></i>
-          </a>
-          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
-            <i class="icon icon-twitter"></i>
-          </a>
-          <a class="google share-sns" href="javascript:;" data-type="google">
-            <i class="icon icon-google"></i>
-          </a>
         </div>
-      </div>
-    </span>
-  </div>
-</div>
-
-<div class="page-modal wx-share js-wx-box">
-    <a class="close js-modal-close" href="javascript:;"><i class="icon icon-close"></i></a>
-    <p>扫一扫，分享到微信</p>
-    <div class="wx-qrcode">
-      <img src="//pan.baidu.com/share/qrcode?url=http://www.isatis.top/2021/01/02/nei-cun-bu-ju-fen-xi-1/" alt="微信分享二维码">
-    </div>
-</div>
-
-<div class="mask js-mask"></div>
-      
-      <div class="clearfix"></div>
-    </div>
+        <div class="clearfix"></div>
+    </header>
   </div>
 </article>
-
-  
-<nav id="article-nav">
-  
-    <a href="/2021/01/02/nei-cun-bu-ju-fen-xi-2/" id="article-nav-newer" class="article-nav-link-wrap">
-      <i class="icon-circle-left"></i>
-      <div class="article-nav-title">
-        
-          内存布局分析(2)
-        
-      </div>
-    </a>
   
   
-    <a href="/2020/10/07/linux-nei-he-zhong-de-hong-hei-shu/" id="article-nav-older" class="article-nav-link-wrap">
-      <div class="article-nav-title">linux内核中的红黑树</div>
-      <i class="icon-circle-right"></i>
-    </a>
-  
-</nav>
-
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-  
-  
+    </div></section>
   
 
-  
-
-  
-
-  
+    
 
 
           </div>
@@ -640,9 +225,9 @@ VmFlags: rd wr mr mw me ac<span aria-hidden="true" class="line-numbers-rows"><sp
 	var yiliaConfig = {
 		mathjax: false,
 		isHome: false,
-		isPost: true,
+		isPost: false,
 		isArchive: false,
-		isTag: false,
+		isTag: true,
 		isCategory: false,
 		open_in_new: false,
 		toc_hide_index: true,
